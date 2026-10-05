@@ -1,0 +1,76 @@
+{
+  "config": {
+    "weeklyTargetHours": 40.0,
+    "standardDayHours": 8.0,
+    "startDate": "2026-09-21",
+    "openingBalanceHours": 0.0
+  },
+  "days": [
+    {
+      "date": "2026-09-21",
+      "type": "WORK",
+      "start": "08:30",
+      "finish": "17:15",
+      "breaks": [
+        {
+          "start": "12:00",
+          "finish": "12:45",
+          "note": "lunch with the client"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-22",
+      "type": "WORK",
+      "start": "09:00",
+      "finish": "18:30",
+      "breaks": [
+        {
+          "start": "10:30",
+          "finish": "10:45"
+        },
+        {
+          "start": "12:30",
+          "finish": "13:15"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-23",
+      "type": "SICK",
+      "hours": 4.0
+    },
+    {
+      "date": "2026-09-24",
+      "type": "WORK",
+      "start": "08:00",
+      "finish": "16:00"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "TIME_IN_LIEU"
+    },
+    {
+      "date": "2026-10-05",
+      "type": "PUBLIC_HOLIDAY"
+    }
+  ],
+  "notes": [
+    {
+      "date": "2026-09-22",
+      "text": "Release day.\n\nShipped 2.4 to production at 16:10 after the smoke tests passed. Two small regressions in the export screen, both fixed before the end of the day.\n\nTo remember: ask about the staging database refresh schedule."
+    },
+    {
+      "date": "2026-09-23",
+      "text": "half day, dentist"
+    },
+    {
+      "date": "2026-09-25",
+      "text": "spent the extra hours from Tuesday"
+    },
+    {
+      "date": "2026-10-05",
+      "text": "Labour Day (QLD)"
+    }
+  ]
+}
