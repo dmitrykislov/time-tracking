@@ -11,7 +11,7 @@
     <relativePath/>
   </parent>
 
-  <groupId>ai.totallywild</groupId>
+  <groupId>com.kislov</groupId>
   <artifactId>timesheets</artifactId>
   <version>1.0.0</version>
   <name>timesheets</name>
