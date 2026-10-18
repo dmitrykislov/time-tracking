@@ -156,6 +156,7 @@ class TimesheetCalculatorTest {
         var view = calculator.view(ts, MON1.plusDays(6).atTime(12, 0));
 
         var week = view.weeks().getFirst();
+        assertThat(view.startDate()).isEqualTo(wednesday);
         assertThat(week.days().get(0).beforeStart()).isTrue();
         assertThat(week.days().get(0).entry()).isNull();
         assertThat(week.days().get(2).beforeStart()).isFalse();
@@ -172,6 +173,7 @@ class TimesheetCalculatorTest {
         var view = calculator.view(ts, MON3.atTime(12, 0));
         assertThat(view.weeks()).hasSize(2);
         assertThat(view.weeks().getLast().start()).isEqualTo(MON2);
+        assertThat(view.startDate()).isEqualTo(MON2);
         assertThat(view.warnings()).isEmpty();
     }
 

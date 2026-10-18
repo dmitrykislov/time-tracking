@@ -9,11 +9,13 @@ import java.util.List;
 /**
  * The whole picture the UI renders, computed fresh from the file on every request.
  *
- * @param weeks newest week first
+ * @param startDate the first day that counts: the configured start, else derived from the data
+ * @param weeks     newest week first
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record TimesheetView(
         TimesheetConfig config,
+        LocalDate startDate,
         LocalDate today,
         @JsonFormat(pattern = "HH:mm") LocalTime now,
         DayStats todayStats,

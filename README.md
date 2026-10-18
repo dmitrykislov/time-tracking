@@ -24,6 +24,10 @@ face, and everything you record lives in one readable JSON file inside this fold
   decisions, things to remember. The Notes tab shows a whole week at a time, chronologically, each
   day headed like *Fri, 04 Sept 2026* with the day's hours underneath, and "Copy week" gives you
   the week as plain text. Notes and timesheet link to each other per day.
+- **Export to PDF.** Pick a period (from your start date to today by default) and the timesheet
+  opens as a PDF in a new tab: one table per week with each day's times, breaks and their notes,
+  break totals and hours worked, a total for the days listed, the week's full ledger (carried in,
+  over/under, balance after) and a summary for the period.
 - **A rolling balance.** Work 43 hours one week and next week's target is 37. Fall short and the
   shortfall follows you the same way. The chip in the top bar is the balance carried into this week,
   and the Today panel shows how far this week has to go.
@@ -90,6 +94,7 @@ The UI is a single page with two hash routes, `#/` for the timesheet and `#/note
 | PUT | `/api/days/{date}` | Create or replace one day |
 | DELETE | `/api/days/{date}` | Remove one day |
 | PUT | `/api/notes/{date}` | Set the day's notes, `{ "text": "..." }`; blank text removes them |
+| GET | `/api/export.pdf?from=YYYY-MM-DD&to=YYYY-MM-DD` | The printable timesheet, served inline; both dates optional |
 | POST | `/api/today/{start-day,start-break,end-break,end-day}` | The buttons |
 
 Rule violations come back as HTTP 400 with a `detail` message the UI shows verbatim.
@@ -111,4 +116,4 @@ Layout:
 - `src/main/java/.../web` — REST controller and error mapping
 - `frontend/` — Vite + React + TypeScript; `npm run build` writes into `target/classes/static`
 
-Stack: Java 25, Spring Boot 4.1, Jackson 3, React 19, Vite 8, Vitest 5.
+Stack: Java 25, Spring Boot 4.1, Jackson 3, OpenPDF 3, React 19, Vite 8, Vitest 5.

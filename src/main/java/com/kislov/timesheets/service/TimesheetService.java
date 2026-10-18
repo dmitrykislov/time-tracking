@@ -7,6 +7,7 @@ import com.kislov.timesheets.domain.TimesheetCalculator;
 import com.kislov.timesheets.domain.TimesheetConfig;
 import com.kislov.timesheets.domain.TimesheetException;
 import com.kislov.timesheets.domain.TimesheetView;
+import com.kislov.timesheets.export.TimesheetPdf;
 import com.kislov.timesheets.storage.TimesheetStore;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -25,6 +26,7 @@ public class TimesheetService {
     private final TimesheetStore store;
     private final Clock clock;
     private final TimesheetCalculator calculator = new TimesheetCalculator();
+    private final TimesheetPdf pdf = new TimesheetPdf();
 
     public TimesheetService(TimesheetStore store, Clock clock) {
         this.store = store;
@@ -37,6 +39,23 @@ public class TimesheetService {
 
     public synchronized Timesheet timesheet() {
         return store.load();
+    }
+
+    /**
+     * The printable timesheet. {@code from} defaults to the start date and {@code to} to today.
+     */
+    public synchronized PdfExport exportPdf(LocalDate from, LocalDate to) {
+        var view = calculator.view(store.load(), now());
+        var start = from != null ? from : view.startDate();
+        var end = to != null ? to : view.today();
+        if (start.isAfter(end)) {
+            throw new TimesheetException("The export period starts (%s) after it ends (%s)".formatted(start, end));
+        }
+        var name = "timesheet-%s-to-%s.pdf".formatted(start, end);
+        return new PdfExport(name, pdf.render(view, start, end, now()));
+    }
+
+    public record PdfExport(String filename, byte[] bytes) {
     }
 
     public synchronized TimesheetView updateConfig(TimesheetConfig config) {

@@ -227,6 +227,8 @@ tr:hover .note-link-empty, tr.is-today .note-link-empty, .note-link-empty:focus 
 .btn-ghost { background: transparent; border-color: transparent; }
 .btn-ghost:hover { background: var(--bg); }
 .btn-danger { color: var(--danger); }
+a.btn { text-decoration: none; display: inline-block; }
+.btn-disabled { opacity: 0.55; cursor: default; pointer-events: none; }
 
 /* Chips and badges */
 .chip {

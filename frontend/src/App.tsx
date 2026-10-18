@@ -4,6 +4,7 @@ import { api, ApiError } from './lib/api';
 import { defaultTimes, fmtMinutes } from './lib/time';
 import type { Config, DayEntry, TodayAction, View } from './types';
 import { BalanceChip } from './components/BalanceChip';
+import { ExportDialog } from './components/ExportDialog';
 import { NotesPage } from './components/NotesPage';
 import { Settings } from './components/Settings';
 import { TodayPanel } from './components/TodayPanel';
@@ -22,6 +23,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const route = useRoute();
@@ -93,6 +95,9 @@ export function App() {
         </div>
         <div className="topbar-right">
           <BalanceChip minutes={totals.balanceMinutes} title="Balance carried into this week" />
+          <button className="btn btn-ghost" onClick={() => setExportOpen(true)} aria-label="Export PDF">
+            ⎙ Export PDF
+          </button>
           <button className="btn btn-ghost" onClick={() => setSettingsOpen(true)} aria-label="Settings">
             ⚙ Settings
           </button>
@@ -195,6 +200,7 @@ export function App() {
       )}
 
       {settingsOpen && <Settings config={view.config} busy={busy} onSave={onSaveConfig} onClose={() => setSettingsOpen(false)} />}
+      {exportOpen && <ExportDialog startDate={view.startDate} today={view.today} onClose={() => setExportOpen(false)} />}
     </div>
   );
 }

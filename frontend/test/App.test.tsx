@@ -150,4 +150,15 @@ describe('App', () => {
     expect(await screen.findByText('Wrote the release notes.')).toBeInTheDocument();
     window.location.hash = '';
   });
+
+  it('opens the export dialog from the top bar with the view dates', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(view({ startDate: '2026-09-07', today: '2026-10-19' })));
+    window.location.hash = '';
+    render(<App />);
+    await screen.findByText('Not started');
+    await userEvent.click(screen.getByRole('button', { name: 'Export PDF' }));
+    expect(screen.getByLabelText('From')).toHaveValue('2026-09-07');
+    expect(screen.getByLabelText('To')).toHaveValue('2026-10-19');
+    expect(screen.getByRole('link', { name: 'Open PDF' })).toHaveAttribute('href', '/api/export.pdf?from=2026-09-07&to=2026-10-19');
+  });
 });

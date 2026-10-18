@@ -30,6 +30,7 @@ export const week = (over: Partial<WeekStats> = {}): WeekStats => ({
 
 export const view = (over: Partial<View> = {}): View => ({
   config: { weeklyTargetHours: 40, standardDayHours: 8, startDate: null, openingBalanceHours: 0 },
+  startDate: '2026-09-21',
   today: '2026-09-30',
   now: '10:15',
   todayStats: emptyDay('2026-09-30'),

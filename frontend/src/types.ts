@@ -76,6 +76,8 @@ export interface Config {
 
 export interface View {
   config: Config;
+  /** First day that counts: the configured start date, else derived from the data. */
+  startDate: string;
   today: string;
   now: string;
   todayStats?: DayStats | null;

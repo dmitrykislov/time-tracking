@@ -89,7 +89,7 @@ public final class TimesheetCalculator {
         }
 
         var totals = new Totals(completedWeeks, completedWorked, completedTarget, completedLeave, balanceIntoCurrentWeek, workedToDate);
-        return new TimesheetView(config, today, nowTime, todayStats, weeks.reversed(), totals, List.copyOf(warnings));
+        return new TimesheetView(config, from, today, nowTime, todayStats, weeks.reversed(), totals, List.copyOf(warnings));
     }
 
     /** The first day that counts: the configured start, else the earliest of the first entry, the first note and today. */

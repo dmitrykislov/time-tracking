@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -180,6 +182,33 @@ class TimesheetApiTest {
         assertThat(store.load().notes()).isEmpty();
 
         mvc.perform(put("/api/notes/nope").contentType(MediaType.APPLICATION_JSON).content("{ \"text\": \"x\" }"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void exportsAPdfInlineWithDefaultsAndValidation() throws Exception {
+        mvc.perform(put("/api/days/2026-09-28").contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"date\": \"2026-09-28\", \"type\": \"WORK\", \"start\": \"08:30\", \"finish\": \"17:00\" }"))
+                .andExpect(status().isOk());
+
+        var body = mvc.perform(get("/api/export.pdf"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string("Content-Disposition", "inline; filename=\"timesheet-2026-09-28-to-2026-09-30.pdf\""))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andReturn().getResponse().getContentAsByteArray();
+        assertThat(new String(body, 0, 5)).isEqualTo("%PDF-");
+        assertThat(body.length).isGreaterThan(1000);
+
+        mvc.perform(get("/api/export.pdf").param("from", "2026-09-21").param("to", "2026-09-27"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "inline; filename=\"timesheet-2026-09-21-to-2026-09-27.pdf\""));
+
+        mvc.perform(get("/api/export.pdf").param("from", "2026-10-01").param("to", "2026-09-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("The export period starts (2026-10-01) after it ends (2026-09-01)"));
+
+        mvc.perform(get("/api/export.pdf").param("from", "yesterday"))
                 .andExpect(status().isBadRequest());
     }
 
