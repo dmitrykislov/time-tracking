@@ -261,6 +261,26 @@ class TimesheetCalculatorTest {
         assertThat(view.weeks().get(2).workedMinutes()).isZero();
     }
 
+    /** Bug: a start date after today produced no weeks at all, so there was no current week and the UI had nothing to show. */
+    @Test
+    void aFutureStartDateStillShowsTheCurrentWeekWithNothingCounting() {
+        var ts = sheet(from(MON3), hours(MON2, 8));
+        var view = calculator.view(ts, MON2.plusDays(2).atTime(12, 0));
+
+        assertThat(view.weeks()).hasSize(1);
+        var week = view.weeks().getFirst();
+        assertThat(week.current()).isTrue();
+        assertThat(week.days()).allMatch(DayStats::beforeStart);
+        assertThat(week.targetMinutes()).isZero();
+        assertThat(week.workedMinutes()).isZero();
+        assertThat(week.runningBalanceMinutes()).isZero();
+        assertThat(view.todayStats()).isNotNull();
+        assertThat(view.todayStats().beforeStart()).isTrue();
+        assertThat(view.startDate()).isEqualTo(MON3);
+        assertThat(view.warnings()).anyMatch(w -> w.contains("before the start date"));
+        assertThat(view.totals()).isEqualTo(new Totals(0, 0, 0, 0, 0, 0));
+    }
+
     @Test
     void sevenHourDaysAcrossTwoWeeksRollUp() {
         var days = new java.util.ArrayList<DayEntry>();

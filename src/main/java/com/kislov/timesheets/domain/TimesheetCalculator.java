@@ -38,7 +38,10 @@ public final class TimesheetCalculator {
                 .max(Comparator.naturalOrder())
                 .orElseThrow();
 
-        var weekStart = from.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        // Always show the week that holds today, even when the start date is still ahead: those days
+        // simply count as "before start" and the week's target is zero.
+        var rangeStart = from.isBefore(today) ? from : today;
+        var weekStart = rangeStart.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         var lastWeekStart = to.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
         var weeks = new ArrayList<WeekStats>();

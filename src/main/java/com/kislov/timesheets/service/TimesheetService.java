@@ -63,6 +63,7 @@ public class TimesheetService {
     }
 
     public synchronized TimesheetView saveDay(DayEntry entry) {
+        checkDate(entry.date());
         return mutate(t -> t.withDay(entry));
     }
 
@@ -77,13 +78,31 @@ public class TimesheetService {
 
     /** Sets the free-text note for a day; blank text removes it. */
     public synchronized TimesheetView saveNote(LocalDate date, String text) {
+        checkDate(date);
         return mutate(t -> t.withNote(date, text));
     }
+
+    /** Guards against typos like 2062 or 1026, which would otherwise stretch the view across thousands of weeks. */
+    private void checkDate(LocalDate date) {
+        if (date.isBefore(EARLIEST)) {
+            throw new TimesheetException("Dates before 2000 are not accepted (" + date + ")");
+        }
+        var latest = today().plusYears(2);
+        if (date.isAfter(latest)) {
+            throw new TimesheetException("Dates more than two years ahead are not accepted (" + date + ")");
+        }
+    }
+
+    private static final LocalDate EARLIEST = LocalDate.of(2000, 1, 1);
 
     /** Stamps the current time as the start of today. */
     public synchronized TimesheetView startDay() {
         return mutate(t -> {
             var today = today();
+            var start = t.config().startDate();
+            if (start != null && today.isBefore(start)) {
+                throw new TimesheetException("Today is before the start date (" + start + "); change it in Settings first");
+            }
             var existing = t.day(today);
             if (existing.isPresent()) {
                 var entry = existing.get();

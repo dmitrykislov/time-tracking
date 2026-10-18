@@ -188,6 +188,32 @@ class TimesheetServiceTest {
         assertThat(view.todayStats().entry().breaks()).containsExactly(new Break(LocalTime.of(12, 0), LocalTime.of(12, 30), "lunch"));
     }
 
+    /** A typo like 2062 would otherwise make the view span thousands of empty weeks. */
+    @Test
+    void refusesDatesFarOutsideTheEngagement() {
+        assertThatThrownBy(() -> service.saveDay(DayEntry.leave(TODAY.plusYears(2).plusDays(1), DayType.ANNUAL_LEAVE, null)))
+                .isInstanceOf(TimesheetException.class).hasMessageContaining("two years");
+        assertThatThrownBy(() -> service.saveNote(LocalDate.of(1999, 12, 31), "y2k"))
+                .isInstanceOf(TimesheetException.class).hasMessageContaining("2000");
+        assertThat(store.load().days()).isEmpty();
+        assertThat(store.load().notes()).isEmpty();
+
+        // Two years ahead exactly, and anything since 2000, is fine.
+        service.saveDay(DayEntry.leave(TODAY.plusYears(2), DayType.ANNUAL_LEAVE, null));
+        service.saveNote(LocalDate.of(2000, 1, 1), "millennium");
+        assertThat(store.load().days()).hasSize(1);
+        assertThat(store.load().notes()).hasSize(1);
+    }
+
+    /** Pressing Start before the configured start date used to record a day that was then silently ignored. */
+    @Test
+    void startDayIsRefusedBeforeTheStartDate() {
+        service.updateConfig(new TimesheetConfig(40.0, 8.0, TODAY.plusDays(5), 0.0));
+        assertThatThrownBy(service::startDay).isInstanceOf(TimesheetException.class)
+                .hasMessageContaining("before the start date (" + TODAY.plusDays(5) + ")");
+        assertThat(store.load().days()).isEmpty();
+    }
+
     @Test
     void viewSeesHandEditsMadeBetweenCalls() {
         service.startDay();

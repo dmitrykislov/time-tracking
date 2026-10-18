@@ -152,4 +152,9 @@ describe('NotesPage', () => {
     expect(await screen.findByText('Copied ✓')).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
+
+  it('does not crash when the server sends no weeks', () => {
+    render(<NotesPage view={view({ weeks: [] })} busy={false} onSaveNote={vi.fn()} />);
+    expect(screen.getByText('Nothing to show yet.')).toBeInTheDocument();
+  });
 });

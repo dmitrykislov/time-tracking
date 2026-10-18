@@ -150,6 +150,23 @@ class DayEntryTest {
         }
     }
 
+    /** Breaks typed in any order are stored sorted, so the file and the UI read top to bottom. */
+    @Test
+    void breaksAreKeptSortedByStart() {
+        var day = DayEntry.work(DATE, T0830, T1700, List.of(
+                new Break(LocalTime.of(15, 0), LocalTime.of(15, 10)),
+                new Break(LocalTime.of(10, 0), LocalTime.of(10, 15)),
+                new Break(T1200, T1245)));
+        assertThat(day.breaks()).extracting(Break::start)
+                .containsExactly(LocalTime.of(10, 0), T1200, LocalTime.of(15, 0));
+    }
+
+    @Test
+    void leaveHoursCannotExceedADay() {
+        assertThatThrownBy(() -> DayEntry.leave(DATE, DayType.SICK, 25.0)).hasMessageContaining("24");
+        assertThat(DayEntry.leave(DATE, DayType.SICK, 24.0).hours()).isEqualTo(24.0);
+    }
+
     @Test
     void finishedAtClosesOpenBreak() {
         var day = DayEntry.work(DATE, T0830, null, List.of(new Break(T1200, null)));

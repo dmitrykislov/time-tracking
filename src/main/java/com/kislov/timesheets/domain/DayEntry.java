@@ -33,7 +33,7 @@ public record DayEntry(
         if (type == null) {
             throw new TimesheetException("A day needs a type");
         }
-        breaks = breaks == null ? List.of() : List.copyOf(breaks);
+        breaks = breaks == null ? List.of() : breaks.stream().sorted(Comparator.comparing(Break::start)).toList();
 
         if (type == DayType.WORK) {
             validateWork(date, start, finish, breaks, hours);
@@ -84,6 +84,9 @@ public record DayEntry(
         }
         if (hours != null && hours <= 0) {
             throw new TimesheetException("Leave hours must be greater than zero");
+        }
+        if (hours != null && hours > 24) {
+            throw new TimesheetException("Leave hours cannot exceed 24");
         }
     }
 

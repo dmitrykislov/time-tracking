@@ -35,7 +35,9 @@ export function weekAsText(week: WeekStats): string {
 export function NotesPage({ view, focusDate, busy, onSaveNote }: Props) {
   const weeks = view.weeks;
   const weekFor = (date: string | undefined) => weeks.find((w) => date && w.start <= date && date <= w.end);
-  const [selectedStart, setSelectedStart] = useState<string>(() => (weekFor(focusDate) ?? weeks.find((w) => w.current) ?? weeks[0]).start);
+  const [selectedStart, setSelectedStart] = useState<string | undefined>(
+    () => (weekFor(focusDate) ?? weeks.find((w) => w.current) ?? weeks[0])?.start,
+  );
   const [editing, setEditing] = useState<string | null>(focusDate ?? null);
   const [copied, setCopied] = useState(false);
 
@@ -49,6 +51,13 @@ export function NotesPage({ view, focusDate, busy, onSaveNote }: Props) {
   }, [focusDate]);
 
   const week = weeks.find((w) => w.start === selectedStart) ?? weeks[0];
+  if (!week) {
+    return (
+      <section className="card">
+        <p className="muted">Nothing to show yet.</p>
+      </section>
+    );
+  }
   const index = weeks.indexOf(week);
   const newer = index > 0 ? weeks[index - 1] : undefined;
   const older = index < weeks.length - 1 ? weeks[index + 1] : undefined;
