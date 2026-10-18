@@ -78,38 +78,39 @@ class TimesheetPdfTest {
 
         var text = text(bytes);
         assertText(text).contains("Timesheet").contains("21 September 2026 to 30 September 2026");
-        assertText(text).contains("40h week, 8h per leave day. Generated 30 Sep 2026, 19:05.");
+        assertText(text).contains("40h week, 8h per leave day").contains("Counting from 21 Sep 2026").contains("Generated 30 Sep 2026, 19:05");
+
+        // Summary strip: the balance story for the whole period, carried in included.
+        assertText(text).contains("HOURS WORKED 41h 30m 5 work days, 2 weeks");
+        assertText(text).contains("BREAKS 2h 15m");
+        assertText(text).contains("CARRIED IN 0m balance before 21 Sep 2026");
+        assertText(text).contains("OVER / UNDER -34h 30m across the weeks shown");
+        assertText(text).contains("BALANCE AFTER -34h 30m going into the week after 4 Oct 2026");
 
         // Week 1: a row per day, with breaks (and their notes), break totals and worked hours.
-        assertText(text).contains("Week 21 Sep - 27 Sep 2026");
+        assertText(text).contains("Week 21 - 27 September 2026").contains("Monday to Sunday");
         assertText(text).contains("Mon 21 Sep Work 08:30 17:15 12:00-12:45 lunch with client 45m 8h");
         assertText(text).contains("Tue 22 Sep Work 09:00 18:30 10:30-10:45").contains("12:30-13:15 1h 8h 30m");
         assertText(text).contains("Wed 23 Sep Sick leave (4h) -4h target");
         assertText(text).contains("Thu 24 Sep Work 08:00 16:00 8h");
         assertText(text).contains("Fri 25 Sep Time in lieu from balance");
-        assertText(text).contains("Sat 26 Sep -");
+        assertText(text).contains("Sat 26 Sep Sun 27 Sep");
         assertText(text).contains("Total for the 7 days listed 1h 45m 24h 30m");
-        assertText(text).contains("Full week: worked 24h 30m, target 36h after 4h leave. Carried in 0m, over/under -11h 30m, balance after -11h 30m.");
+        // Week ledger: worked, target (after leave), then carried in + over/under = balance after.
+        assertText(text).contains("WORKED 24h 30m TARGET 36h after 4h leave CARRIED IN 0m + OVER / UNDER -11h 30m = BALANCE AFTER -11h 30m");
 
         // Week 2 is the current week, cut at today.
-        assertText(text).contains("Week 28 Sep - 4 Oct 2026");
+        assertText(text).contains("Week 28 September - 4 October 2026").contains("3 of 7 days fall inside the period");
         assertText(text).contains("Mon 28 Sep Work 08:30 17:30 12:00-12:30 30m 8h 30m");
         assertText(text).contains("Tue 29 Sep Work 08:45 17:15 8h 30m");
-        assertText(text).contains("Wed 30 Sep -");
+        assertText(text).contains("Wed 30 Sep Total for the 3 days listed");
         assertText(text).doesNotContain("Thu 1 Oct");
         assertText(text).contains("Total for the 3 days listed 30m 17h");
-        assertText(text).contains("Carried in -11h 30m, over/under -23h, balance after -34h 30m.");
+        assertText(text).contains("CARRIED IN -11h 30m + OVER / UNDER -23h = BALANCE AFTER -34h 30m");
 
         // The upcoming holiday week is outside the period.
-        assertText(text).doesNotContain("5 Oct - 11 Oct");
-
-        assertText(text).contains("Period summary");
-        assertText(text).contains("Hours worked 41h 30m");
-        assertText(text).contains("Breaks 2h 15m");
-        assertText(text).contains("Work days 5");
-        assertText(text).contains("Weeks 2");
-        assertText(text).contains("Carried into first week 0m");
-        assertText(text).contains("Balance after last week -34h 30m");
+        assertText(text).doesNotContain("5 - 11 October");
+        assertText(text).contains("Page 1 of");
     }
 
     @Test
@@ -121,8 +122,11 @@ class TimesheetPdfTest {
         assertText(text).contains("Wed 23 Sep").contains("Thu 24 Sep");
         assertText(text).doesNotContain("Mon 21 Sep").doesNotContain("Fri 25 Sep").doesNotContain("Week 28 Sep");
         assertText(text).contains("Total for the 2 days listed 0m 8h");
-        assertText(text).contains("Full week: worked 24h 30m, target 36h after 4h leave.");
-        assertText(text).contains("Hours worked 8h").contains("Work days 1").contains("Weeks 1");
+        assertText(text).contains("2 of 7 days fall inside the period");
+        assertText(text).contains("WORKED 24h 30m TARGET 36h after 4h leave");
+        assertText(text).contains("HOURS WORKED 8h 1 work day, 1 week");
+        assertText(text).contains("CARRIED IN 0m balance before 23 Sep 2026");
+        assertText(text).contains("BALANCE AFTER -11h 30m going into the week after 27 Sep 2026");
     }
 
     @Test
@@ -130,13 +134,38 @@ class TimesheetPdfTest {
         var view = calculator.view(sheet(), NOW);
         var text = text(pdf.render(view, LocalDate.of(2027, 3, 1), LocalDate.of(2027, 3, 31), NOW));
         assertText(text).contains("Nothing recorded in this period.");
-        assertText(text).doesNotContain("Period summary");
+        assertText(text).doesNotContain("HOURS WORKED");
     }
 
     @Test
     void refusesAReversedPeriod() {
         var view = calculator.view(sheet(), NOW);
         assertThatThrownBy(() -> pdf.render(view, MON2, MON1, NOW)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** A period spanning an earlier balance shows that balance as carried in, so the reader sees where the week started. */
+    @Test
+    void carriedInFromBeforeThePeriodIsShownUpFront() throws IOException {
+        var ts = sheet().withConfig(new TimesheetConfig(40.0, 8.0, MON1, 3.5));
+        var view = calculator.view(ts, NOW);
+        var text = text(pdf.render(view, MON2, NOW.toLocalDate(), NOW));
+
+        // Week 1 ended at +3h30 - 11h30 = -8h, which is what the printed period starts with.
+        assertText(text).contains("CARRIED IN -8h balance before 28 Sep 2026");
+        assertText(text).contains("OVER / UNDER -23h across the weeks shown");
+        assertText(text).contains("BALANCE AFTER -31h going into the week after 4 Oct 2026");
+        assertText(text).contains("CARRIED IN -8h + OVER / UNDER -23h = BALANCE AFTER -31h");
+        assertText(text).doesNotContain("Week 21 - 27 September");
+    }
+
+    @Test
+    void weekRangesReadNaturally() {
+        var sameMonth = calculator.view(sheet(), NOW).weeks().getLast();
+        assertThat(TimesheetPdf.weekRange(sameMonth)).isEqualTo("21 - 27 September 2026");
+        var crossMonth = calculator.view(sheet(), NOW).weeks().get(1);
+        assertThat(TimesheetPdf.weekRange(crossMonth)).isEqualTo("28 September - 4 October 2026");
+        var crossYear = calculator.view(Timesheet.empty(), LocalDate.of(2026, 12, 30).atTime(9, 0)).weeks().getFirst();
+        assertThat(TimesheetPdf.weekRange(crossYear)).isEqualTo("28 December 2026 - 3 January 2027");
     }
 
     @Test
