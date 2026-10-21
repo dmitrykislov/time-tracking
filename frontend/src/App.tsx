@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { notesHref, useRoute } from './hooks';
 import { api, ApiError } from './lib/api';
-import { defaultTimes, fmtMinutes } from './lib/time';
+import { defaultTimes } from './lib/time';
 import type { Config, DayEntry, TodayAction, View } from './types';
 import { BalanceChip } from './components/BalanceChip';
 import { ExportDialog } from './components/ExportDialog';
@@ -122,36 +122,16 @@ export function App() {
         <NotesPage view={view} focusDate={route.date} busy={busy} onSaveNote={onSaveNote} />
       ) : (
         <>
-      <TodayPanel today={view.today} stats={view.todayStats} week={currentWeek} busy={busy} onAction={onAction} />
-
-      <section className="totals card" aria-label="Rolling totals">
-        <div>
-          <dt>Carried in</dt>
-          <dd>
-            <BalanceChip minutes={totals.balanceMinutes} />
-          </dd>
-        </div>
-        <div>
-          <dt>Worked to date</dt>
-          <dd>{fmtMinutes(totals.workedToDateMinutes)}</dd>
-        </div>
-        <div>
-          <dt>Completed weeks</dt>
-          <dd>{totals.completedWeeks}</dd>
-        </div>
-        <div>
-          <dt>Worked, completed</dt>
-          <dd>{fmtMinutes(totals.workedMinutes)}</dd>
-        </div>
-        <div>
-          <dt>Target, completed</dt>
-          <dd>{fmtMinutes(totals.targetMinutes)}</dd>
-        </div>
-        <div>
-          <dt>Leave, completed</dt>
-          <dd>{fmtMinutes(totals.leaveMinutes)}</dd>
-        </div>
-      </section>
+      <TodayPanel
+        today={view.today}
+        startDate={view.startDate}
+        stats={view.todayStats}
+        week={currentWeek}
+        totals={totals}
+        config={view.config}
+        busy={busy}
+        onAction={onAction}
+      />
 
       <div className="weeks">
         {visibleWeeks.map((week, index) => (

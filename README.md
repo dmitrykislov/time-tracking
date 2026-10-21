@@ -17,9 +17,13 @@ face, and everything you record lives in one readable JSON file inside this fold
   add a forgotten break, add a note, or backfill a past day by hand.
 - **Leave and holidays.** Mark a day as Public holiday, Sick, Personal, Annual or Time in lieu. A half
   day is a leave entry with its own hours.
-- **Weeks run Monday to Sunday.** Each week card is a small ledger: hours worked, the target, then
-  *carried in + over/under = balance after*. "Over/under" is worked minus target for that week alone;
-  "balance after" is what goes into the next week. Hours still to go this week live in the Today panel.
+- **Weeks run Monday to Sunday.** Each week answers three questions in its header: what was
+  *carried in*, what happened (hours *worked*, with "11h 30m short", "2h over" or "on target" and a
+  small meter against the target), and what it *carried forward* into the next week. The target is
+  only spelled out on a week when leave changed it.
+- **As of now.** The top of the page shows today's clock and buttons, then the three numbers that
+  matter right now: hours left this week (with the finish time that hits the target), the balance
+  carried into this week, and hours worked to date, with the weekly target stated once.
 - **Notes.** Every break can carry a short label. Every day has its own notes page: what happened,
   decisions, things to remember. The Notes tab shows a whole week at a time, chronologically, each
   day headed like *Fri, 04 Sept 2026* with the day's hours underneath, and "Copy week" gives you
@@ -44,7 +48,7 @@ face, and everything you record lives in one readable JSON file inside this fold
 - Balance for a week = worked − target. Running balance = previous running balance + week balance.
   The effective target shown for a week = target − carry-in.
 - A week with nothing recorded still counts its full target. Mark leave if you were away.
-- Rolling totals cover completed weeks only, so the carried balance is a settled number. "Worked to
+- The balance shown at the top covers completed weeks only, so it is a settled number. "Worked to
   date" adds the current week so far. Weeks that start after today are upcoming and not counted.
 - Every save recomputes everything from the file, so editing any past day updates that week, every
   later week's carry-in and the totals at once.

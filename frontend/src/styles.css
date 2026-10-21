@@ -18,6 +18,7 @@
   --err-bg: #fee2e2;
   --err-text: #7f1d1d;
   --today-bg: #eff6ff;
+  --meter-track: #dbe7fb;
   --radius: 12px;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -42,6 +43,7 @@
     --err-bg: #450a0a;
     --err-text: #fecaca;
     --today-bg: #172554;
+    --meter-track: #1e3a8a;
   }
 }
 
@@ -234,6 +236,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .chip {
   display: inline-flex;
   align-items: center;
+  white-space: nowrap;
   gap: 5px;
   padding: 5px 12px;
   border-radius: 999px;
@@ -306,8 +309,6 @@ a.btn { text-decoration: none; display: inline-block; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
 }
-.big-numbers { display: flex; gap: 28px; flex-wrap: wrap; align-items: baseline; }
-.finish-hint { margin-top: 8px; font-size: 0.93rem; font-weight: 600; }
 .big-number {
   font-size: 2.2rem;
   font-weight: 700;
@@ -322,37 +323,29 @@ a.btn { text-decoration: none; display: inline-block; }
   flex-wrap: wrap;
 }
 
-.week-progress { margin-top: 18px; }
-.progress-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.9rem;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-  gap: 8px;
+/* As of now */
+.now { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.now-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px 28px;
+  margin-top: 8px;
 }
-.progress {
-  height: 10px;
+.stat { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stat dt { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.stat dd { margin: 0; }
+.stat-value { font-size: 1.6rem; font-weight: 650; letter-spacing: -0.01em; line-height: 1.1; }
+.hero { font-size: 3rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+.meter {
+  height: 8px;
   border-radius: 999px;
-  background: var(--even-bg);
+  background: var(--meter-track);
   overflow: hidden;
 }
-.progress-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 999px;
-  transition: width 0.3s;
-}
-.progress-fill.done { background: var(--pos); }
-
-/* Rolling totals */
-.totals {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-}
-.totals dt { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.totals dd { font-size: 1.15rem; font-weight: 650; margin-top: 2px; }
+.meter-sm { height: 5px; margin-top: 2px; }
+.meter-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s; }
+.meter-fill.done { background: var(--pos); }
+.finish-hint { font-size: 0.93rem; font-weight: 600; }
 
 /* Weeks */
 .weeks { display: flex; flex-direction: column; gap: 12px; }
@@ -370,15 +363,15 @@ a.btn { text-decoration: none; display: inline-block; }
 }
 .week-head:hover { background: var(--bg); }
 .week-title { display: flex; align-items: center; gap: 10px; }
-.week-stats {
-  display: flex;
-  gap: 22px;
-  flex-wrap: wrap;
-}
-.week-stats .ledger-op { align-self: flex-end; color: var(--muted); font-weight: 600; margin: 0 -10px 1px; }
-.week-stats dt { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.week-stats dd { font-weight: 650; font-variant-numeric: tabular-nums; }
-.week-stats small { font-weight: 400; }
+.week-summary { display: flex; gap: 28px; align-items: flex-start; margin: 0; }
+.ws { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ws dt { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; white-space: nowrap; }
+.ws dd { font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ws small { font-weight: 400; font-size: 0.78rem; }
+.ws-work { min-width: 200px; }
+.ws-forward dd { font-size: 1.05rem; }
+.verdict { font-weight: 500; }
+.verdict.even { color: var(--muted); }
 
 .table-wrap { overflow-x: auto; border-top: 1px solid var(--line); }
 table.days {
@@ -458,8 +451,13 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .modal .field small { font-size: 0.78rem; }
 .modal .field label { color: var(--muted); font-size: 0.85rem; }
 
+@media (max-width: 760px) {
+  .now-grid { grid-template-columns: 1fr; gap: 14px; }
+  .hero { font-size: 2.4rem; }
+}
 @media (max-width: 640px) {
   .big-number { font-size: 1.8rem; }
-  .week-stats { gap: 14px; }
+  .week-summary { gap: 14px; flex-wrap: wrap; }
+  .ws-work { min-width: 160px; }
   .card { padding: 14px 14px; }
 }

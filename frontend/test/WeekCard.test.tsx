@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { WeekCard } from '../src/components/WeekCard';
+import type { WeekStats } from '../src/types';
 import { emptyDay, week } from './fixtures';
 
 const config = { weeklyTargetHours: 40, standardDayHours: 8, openingBalanceHours: 0 };
@@ -22,13 +23,13 @@ describe('WeekCard', () => {
     render(<WeekCard week={w} today="2026-09-30" now="12:20" config={config} defaults={defaults} expanded={false} busy={false} onToggle={vi.fn()} onSaveDay={vi.fn()} onDeleteDay={vi.fn()} />);
 
     const head = screen.getByRole('heading', { name: '28 Sep – 4 Oct' }).closest('header')!;
-    expect(head).toHaveTextContent('Worked33h');
-    expect(head).toHaveTextContent('Target32h after 8h leave');
-    // Ledger: carried in + this week = balance after.
+    // Three questions: what came in, what happened, what goes forward. (This fixture is the current week.)
     expect(head).toHaveTextContent('Carried in+1h 30m');
-    expect(head).toHaveTextContent('Over/under+1h');
-    expect(head).toHaveTextContent('Balance after+2h 30m');
-    expect(head).not.toHaveTextContent('Left');
+    expect(head).toHaveTextContent('So far33h · 1h over');
+    expect(head).toHaveTextContent('target 32h after 8h leave');
+    expect(head).toHaveTextContent('Balance so far+2h 30m');
+    expect(head).not.toHaveTextContent('Over/under');
+    expect(head).not.toHaveTextContent('Target32h');
     expect(screen.getByText('This week')).toBeInTheDocument();
     expect(screen.queryByRole('table')).toBeNull();
   });
@@ -105,7 +106,7 @@ describe('WeekCard', () => {
     expect(screen.getByText('Upcoming')).toBeInTheDocument();
     expect(head).toHaveTextContent('Target32h after 8h leave');
     expect(head).not.toHaveTextContent('Carried in');
-    expect(head).not.toHaveTextContent('Balance after');
+    expect(head).not.toHaveTextContent('Carried forward');
   });
 
   it('totals several breaks and sizes a running break by the clock', () => {
@@ -139,5 +140,41 @@ describe('WeekCard', () => {
     expect(link.textContent!.endsWith('…')).toBe(true);
     await userEvent.click(link);
     expect(screen.queryByRole('form')).toBeNull();
+  });
+
+  it('describes a finished week in plain words: short, over or on target, and what it carried forward', () => {
+    const past = (over: Partial<WeekStats>) => week({ start: '2026-09-21', end: '2026-09-27', current: false, ...over });
+    const { rerender } = render(
+      <WeekCard week={past({ workedMinutes: 1470, targetMinutes: 2160, leaveMinutes: 240, balanceMinutes: -690, runningBalanceMinutes: -690 })} today="2026-09-30" now="12:20" config={config} defaults={defaults} expanded={false} busy={false} onToggle={vi.fn()} onSaveDay={vi.fn()} onDeleteDay={vi.fn()} />,
+    );
+    let head = screen.getByRole('heading', { name: '21 Sep – 27 Sep' }).closest('header')!;
+    expect(head).toHaveTextContent('Carried in0m');
+    expect(head).toHaveTextContent('Worked24h 30m · 11h 30m short');
+    expect(head).toHaveTextContent('target 36h after 4h leave');
+    expect(head).toHaveTextContent('Carried forward−11h 30m');
+    expect(within(head).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '68');
+
+    rerender(
+      <WeekCard week={past({ workedMinutes: 2520, targetMinutes: 2400, carryInMinutes: -690, balanceMinutes: 120, runningBalanceMinutes: -570 })} today="2026-09-30" now="12:20" config={config} defaults={defaults} expanded={false} busy={false} onToggle={vi.fn()} onSaveDay={vi.fn()} onDeleteDay={vi.fn()} />,
+    );
+    head = screen.getByRole('heading', { name: '21 Sep – 27 Sep' }).closest('header')!;
+    expect(head).toHaveTextContent('Carried in−11h 30m');
+    expect(head).toHaveTextContent('Worked42h · 2h over');
+    expect(head).not.toHaveTextContent('target 40h');
+    expect(head).toHaveTextContent('Carried forward−9h 30m');
+
+    rerender(
+      <WeekCard week={past({ workedMinutes: 2400, targetMinutes: 2400, balanceMinutes: 0, runningBalanceMinutes: 0 })} today="2026-09-30" now="12:20" config={config} defaults={defaults} expanded={false} busy={false} onToggle={vi.fn()} onSaveDay={vi.fn()} onDeleteDay={vi.fn()} />,
+    );
+    head = screen.getByRole('heading', { name: '21 Sep – 27 Sep' }).closest('header')!;
+    expect(head).toHaveTextContent('Worked40h · on target');
+    expect(head).toHaveTextContent('Carried forward0m');
+  });
+
+  it('says how far the current week has to go', () => {
+    render(<WeekCard week={week({ workedMinutes: 948, balanceMinutes: -1452, runningBalanceMinutes: -1452 })} today="2026-09-30" now="12:20" config={config} defaults={defaults} expanded={false} busy={false} onToggle={vi.fn()} onSaveDay={vi.fn()} onDeleteDay={vi.fn()} />);
+    const head = screen.getByRole('heading', { name: '28 Sep – 4 Oct' }).closest('header')!;
+    expect(head).toHaveTextContent('So far15h 48m · 24h 12m to go');
+    expect(head).toHaveTextContent('Balance so far−24h 12m');
   });
 });

@@ -35,8 +35,23 @@ function hoursCell(day: DayStats) {
   return <span className="muted">from balance</span>;
 }
 
+/** "11h 30m short", "2h over", "on target" for a finished week; "24h 12m to go" while it is running. */
+export function verdict(week: WeekStats): { text: string; tone: 'pos' | 'neg' | 'even' } {
+  const diff = week.workedMinutes - week.targetMinutes;
+  if (week.current) {
+    if (diff >= 0) return { text: diff === 0 ? 'target reached' : `${fmtMinutes(diff)} over`, tone: 'pos' };
+    return { text: `${fmtMinutes(-diff)} to go`, tone: 'even' };
+  }
+  if (diff > 0) return { text: `${fmtMinutes(diff)} over`, tone: 'pos' };
+  if (diff < 0) return { text: `${fmtMinutes(-diff)} short`, tone: 'neg' };
+  return { text: 'on target', tone: 'even' };
+}
+
 export function WeekCard({ week, today, now, config, defaults, expanded, busy, onToggle, onSaveDay, onDeleteDay }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
+  const v = verdict(week);
+  const progress = week.targetMinutes > 0 ? Math.min(100, Math.round((week.workedMinutes / week.targetMinutes) * 100)) : 100;
+  const met = week.workedMinutes >= week.targetMinutes;
 
   return (
     <section
@@ -50,43 +65,46 @@ export function WeekCard({ week, today, now, config, defaults, expanded, busy, o
           {week.upcoming && <span className="badge badge-muted">Upcoming</span>}
           <span className="muted small chevron">{expanded ? '▾' : '▸'}</span>
         </div>
-        <dl className="week-stats">
-          {!week.upcoming && (
-            <div title="Hours actually worked this week">
-              <dt>Worked</dt>
-              <dd>{fmtMinutes(week.workedMinutes)}</dd>
+
+        {week.upcoming ? (
+          <dl className="week-summary">
+            <div className="ws">
+              <dt>Target</dt>
+              <dd>
+                {fmtMinutes(week.targetMinutes)}
+                {week.leaveMinutes > 0 && <small className="muted"> after {fmtMinutes(week.leaveMinutes)} leave</small>}
+              </dd>
             </div>
-          )}
-          <div title="Your weekly hours, minus any leave or public holidays this week">
-            <dt>Target</dt>
-            <dd>
-              {fmtMinutes(week.targetMinutes)}
-              {week.leaveMinutes > 0 && <small className="muted"> after {fmtMinutes(week.leaveMinutes)} leave</small>}
-            </dd>
-          </div>
-          {!week.upcoming && (
-            <>
-              <div title="Balance brought forward from the previous weeks">
-                <dt>Carried in</dt>
-                <dd className={week.carryInMinutes >= 0 ? 'pos' : 'neg'}>{fmtSigned(week.carryInMinutes)}</dd>
+          </dl>
+        ) : (
+          <dl className="week-summary">
+            <div className="ws" title="Balance brought into this week from earlier weeks">
+              <dt>Carried in</dt>
+              <dd className={week.carryInMinutes > 0 ? 'pos' : week.carryInMinutes < 0 ? 'neg' : ''}>{fmtSigned(week.carryInMinutes)}</dd>
+            </div>
+            <div className="ws ws-work" title="Hours worked this week against its target">
+              <dt>{week.current ? 'So far' : 'Worked'}</dt>
+              <dd>
+                <strong>{fmtMinutes(week.workedMinutes)}</strong>
+                <span className={`verdict ${v.tone}`}> · {v.text}</span>
+              </dd>
+              <div className="meter meter-sm" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+                <div className={`meter-fill ${met ? 'done' : ''}`} style={{ width: `${progress}%` }} />
               </div>
-              <div className="ledger-op" aria-hidden="true">
-                +
-              </div>
-              <div title="Worked minus target, this week alone">
-                <dt>Over/under</dt>
-                <dd className={week.balanceMinutes >= 0 ? 'pos' : 'neg'}>{fmtSigned(week.balanceMinutes)}</dd>
-              </div>
-              <div className="ledger-op" aria-hidden="true">
-                =
-              </div>
-              <div title="Carried in plus this week: what goes into next week">
-                <dt>Balance after</dt>
-                <dd className={week.runningBalanceMinutes >= 0 ? 'pos' : 'neg'}>{fmtSigned(week.runningBalanceMinutes)}</dd>
-              </div>
-            </>
-          )}
-        </dl>
+              {week.leaveMinutes > 0 && (
+                <small className="muted">
+                  target {fmtMinutes(week.targetMinutes)} after {fmtMinutes(week.leaveMinutes)} leave
+                </small>
+              )}
+            </div>
+            <div className="ws ws-forward" title={week.current ? 'Where the balance stands if the week ended now' : 'What this week passed on to the next'}>
+              <dt>{week.current ? 'Balance so far' : 'Carried forward'}</dt>
+              <dd className={week.runningBalanceMinutes > 0 ? 'pos' : week.runningBalanceMinutes < 0 ? 'neg' : ''}>
+                {fmtSigned(week.runningBalanceMinutes)}
+              </dd>
+            </div>
+          </dl>
+        )}
       </header>
 
       {expanded && (

@@ -28,8 +28,10 @@ describe('App', () => {
     expect(await screen.findByText('Not started')).toBeInTheDocument();
     expect(screen.getAllByText('+1h 40m')[0]).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start day' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Rolling totals')).toHaveTextContent('Worked to date123h 40m');
-    expect(screen.getByLabelText('Rolling totals')).toHaveTextContent('Completed weeks3');
+    expect(screen.getByLabelText('Worked to date')).toHaveTextContent('123h 40m');
+    expect(screen.getByLabelText('Balance')).toHaveTextContent('+1h 40m ahead');
+    expect(screen.getByLabelText('Balance')).toHaveTextContent('from 3 completed weeks');
+    expect(screen.queryByLabelText('Rolling totals')).toBeNull();
     expect(screen.getByLabelText('Week of 2026-09-28')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith('/api/view', expect.anything());
   });

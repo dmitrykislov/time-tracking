@@ -1,17 +1,24 @@
 import { notesHref, useNow } from '../hooks';
-import { finishTimeFor, fmtLongDay, fmtMinutes, fmtSigned, hhmm, workedMinutes } from '../lib/time';
-import { dayTypeLabel, type DayStats, type TodayAction, type WeekStats } from '../types';
+import { finishTimeFor, fmtDay, fmtLongDay, fmtMinutes, fmtSigned, hhmm, workedMinutes } from '../lib/time';
+import { dayTypeLabel, type Config, type DayStats, type TodayAction, type Totals, type WeekStats } from '../types';
+import { BalanceChip } from './BalanceChip';
 
 interface Props {
   today: string;
+  startDate: string;
   stats: DayStats | null | undefined;
   week: WeekStats | undefined;
+  totals: Totals;
+  config: Config;
   busy: boolean;
   onAction: (action: TodayAction) => void;
 }
 
-/** The four buttons, a live clock, and how the week is tracking. */
-export function TodayPanel({ today, stats, week, busy, onAction }: Props) {
+/**
+ * The top of the page: today's buttons and clock, then "as of now" in three tiles. The hero
+ * figure is what is left this week, because that is the number that decides when to stop.
+ */
+export function TodayPanel({ today, startDate, stats, week, totals, config, busy, onAction }: Props) {
   const now = useNow();
   const nowText = hhmm(now);
   const entry = stats?.entry ?? null;
@@ -27,6 +34,20 @@ export function TodayPanel({ today, stats, week, busy, onAction }: Props) {
   const finishAt = finishTimeFor(nowText, remaining);
   const leaveToday = !!entry && entry.type !== 'WORK';
   const finished = !!entry && entry.type === 'WORK' && !running;
+
+  let status: string;
+  if (!entry) {
+    status = 'Not started';
+  } else if (entry.type !== 'WORK') {
+    status = dayTypeLabel(entry.type) + (entry.hours ? ` (${entry.hours}h)` : '');
+  } else if (onBreak) {
+    const open = entry.breaks?.find((b) => !b.finish);
+    status = `On a break since ${open?.start ?? ''}`;
+  } else if (running) {
+    status = `Working since ${entry.start}`;
+  } else {
+    status = `Finished · ${entry.start} – ${entry.finish}`;
+  }
 
   let finishHint: string | null = null;
   if (!week) {
@@ -45,19 +66,11 @@ export function TodayPanel({ today, stats, week, busy, onAction }: Props) {
     finishHint = `Start now and finish at ${finishAt} to hit the weekly target.`;
   }
 
-  let status: string;
-  if (!entry) {
-    status = 'Not started';
-  } else if (entry.type !== 'WORK') {
-    status = dayTypeLabel(entry.type) + (entry.hours ? ` (${entry.hours}h)` : '');
-  } else if (onBreak) {
-    const open = entry.breaks?.find((b) => !b.finish);
-    status = `On a break since ${open?.start ?? ''}`;
-  } else if (running) {
-    status = `Working since ${entry.start}`;
-  } else {
-    status = `Finished · ${entry.start} – ${entry.finish}`;
-  }
+  const weekTargetText = week
+    ? `${fmtMinutes(week.targetMinutes)} target${week.leaveMinutes > 0 ? ` after ${fmtMinutes(week.leaveMinutes)} leave` : ''}${
+        carryIn !== 0 ? `, ${fmtSigned(carryIn)} carried in` : ''
+      }`
+    : '';
 
   return (
     <section className="today card" aria-label="Today">
@@ -77,16 +90,9 @@ export function TodayPanel({ today, stats, week, busy, onAction }: Props) {
       <div className="today-body">
         <div className="today-status">
           <p className={`status status-${onBreak ? 'break' : running ? 'running' : 'idle'}`}>{status}</p>
-          <div className="big-numbers">
-            <p className="big-number" aria-label="Worked today">
-              {fmtMinutes(todayWorked)} <span className="muted">today</span>
-            </p>
-            {week && (
-              <p className={`big-number ${remaining <= 0 ? 'pos' : ''}`} aria-label="Left this week">
-                {fmtMinutes(Math.abs(remaining))} <span className="muted">{remaining > 0 ? 'left this week' : 'over this week'}</span>
-              </p>
-            )}
-          </div>
+          <p className="big-number" aria-label="Worked today">
+            {fmtMinutes(todayWorked)} <span className="muted">today</span>
+          </p>
         </div>
 
         <div className="today-actions">
@@ -120,35 +126,46 @@ export function TodayPanel({ today, stats, week, busy, onAction }: Props) {
       </div>
 
       {week && (
-        <div className="week-progress" aria-label="This week">
-          <div className="progress-labels">
-            <span>
-              <strong>{fmtMinutes(weekWorked)}</strong> worked this week
-            </span>
-            <span>
-              {remaining > 0 ? (
-                <>
-                  <strong>{fmtMinutes(remaining)}</strong> to go
-                </>
-              ) : (
-                <>
-                  <strong>{fmtMinutes(-remaining)}</strong> over
-                </>
+        <div className="now" aria-label="As of now">
+          <p className="eyebrow">As of now</p>
+          <div className="now-grid">
+            <div className="stat stat-hero" aria-label="This week">
+              <dt>{remaining > 0 ? 'Left this week' : 'Over this week'}</dt>
+              <dd className={`hero ${remaining <= 0 ? 'pos' : ''}`} aria-label="Left this week">
+                {fmtMinutes(Math.abs(remaining))}
+              </dd>
+              <div className="meter" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+                <div className={`meter-fill ${remaining <= 0 ? 'done' : ''}`} style={{ width: `${progress}%` }} />
+              </div>
+              <p className="small">
+                <strong>{fmtMinutes(weekWorked)}</strong> worked <span className="muted">· {weekTargetText}</span>
+              </p>
+              {finishHint && (
+                <p className="finish-hint" aria-label="Finish time">
+                  {finishHint}
+                </p>
               )}
-              <span className="muted">
-                {' '}
-                · {fmtMinutes(week.targetMinutes)} target{carryIn !== 0 && <>, {fmtSigned(carryIn)} carried in</>}
-              </span>
-            </span>
+            </div>
+
+            <div className="stat" aria-label="Balance">
+              <dt>Balance</dt>
+              <dd>
+                <BalanceChip minutes={totals.balanceMinutes} />
+              </dd>
+              <p className="muted small">
+                carried into this week
+                {totals.completedWeeks > 0 ? ` from ${totals.completedWeeks} completed ${totals.completedWeeks === 1 ? 'week' : 'weeks'}` : ''}
+              </p>
+            </div>
+
+            <div className="stat" aria-label="Worked to date">
+              <dt>Worked to date</dt>
+              <dd className="stat-value">{fmtMinutes(totals.workedToDateMinutes)}</dd>
+              <p className="muted small">
+                since {fmtDay(startDate)} · {fmtMinutes(Math.round(config.weeklyTargetHours * 60))} week, {fmtMinutes(Math.round(config.standardDayHours * 60))} per leave day
+              </p>
+            </div>
           </div>
-          <div className="progress" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
-            <div className={`progress-fill ${remaining <= 0 ? 'done' : ''}`} style={{ width: `${progress}%` }} />
-          </div>
-          {finishHint && (
-            <p className="finish-hint" aria-label="Finish time">
-              {finishHint}
-            </p>
-          )}
         </div>
       )}
     </section>
