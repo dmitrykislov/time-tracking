@@ -61,6 +61,7 @@ class TimesheetTest {
         assertThatThrownBy(() -> new Timesheet(null, List.of(), List.of(new DayNote(MON, "a"), new DayNote(MON, "b"))))
                 .hasMessageContaining("Two notes");
         assertThatThrownBy(() -> new DayNote(MON, " ")).hasMessageContaining("some text");
+        assertThatThrownBy(() -> new DayNote(MON, null)).hasMessageContaining("some text");
         assertThatThrownBy(() -> new DayNote(null, "x")).hasMessageContaining("date");
     }
 

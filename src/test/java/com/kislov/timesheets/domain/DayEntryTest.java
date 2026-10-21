@@ -85,6 +85,26 @@ class DayEntryTest {
     class Validation {
 
         @Test
+        void everyDayNeedsADateAndAType() {
+            assertThatThrownBy(() -> new DayEntry(null, DayType.WORK, T0830, T1700, null, null)).hasMessageContaining("needs a date");
+            assertThatThrownBy(() -> new DayEntry(DATE, null, T0830, T1700, null, null)).hasMessageContaining("needs a type");
+            assertThatThrownBy(() -> new Break(null, T1200)).hasMessageContaining("needs a start");
+        }
+
+        @Test
+        void aBreakAfterAnOpenBreakIsAnOverlap() {
+            assertThatThrownBy(() -> DayEntry.work(DATE, T0830, null, List.of(new Break(T1200, null), new Break(T1245, LocalTime.of(13, 0)))))
+                    .hasMessageContaining("overlap");
+        }
+
+        @Test
+        void leaveRejectsFinishOrBreaksTooNotJustStart() {
+            assertThatThrownBy(() -> new DayEntry(DATE, DayType.SICK, null, T1700, null, null)).hasMessageContaining("no start, finish or breaks");
+            assertThatThrownBy(() -> new DayEntry(DATE, DayType.SICK, null, null, List.of(new Break(T1200, T1245)), null))
+                    .hasMessageContaining("no start, finish or breaks");
+        }
+
+        @Test
         void workNeedsStart() {
             assertThatThrownBy(() -> DayEntry.work(DATE, null, T1700, null))
                     .isInstanceOf(TimesheetException.class).hasMessageContaining("start");
@@ -165,6 +185,14 @@ class DayEntryTest {
     void leaveHoursCannotExceedADay() {
         assertThatThrownBy(() -> DayEntry.leave(DATE, DayType.SICK, 25.0)).hasMessageContaining("24");
         assertThat(DayEntry.leave(DATE, DayType.SICK, 24.0).hours()).isEqualTo(24.0);
+    }
+
+    @Test
+    void onBreakIsOnlyTrueForARunningDayWithAnOpenBreak() {
+        assertThat(DayEntry.work(DATE, T0830, null, List.of(new Break(T1200, T1245))).onBreak()).isFalse();
+        assertThat(DayEntry.work(DATE, T0830, T1700, List.of(new Break(T1200, T1245))).onBreak()).isFalse();
+        assertThat(DayEntry.leave(DATE, DayType.SICK, null).onBreak()).isFalse();
+        assertThat(DayEntry.work(DATE, T0830, null, List.of(new Break(T1200, null))).onBreak()).isTrue();
     }
 
     @Test

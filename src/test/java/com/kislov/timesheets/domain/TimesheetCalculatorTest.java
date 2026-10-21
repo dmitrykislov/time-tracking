@@ -261,6 +261,64 @@ class TimesheetCalculatorTest {
         assertThat(view.weeks().get(2).workedMinutes()).isZero();
     }
 
+    @Test
+    void severalEntriesBeforeTheStartDateAreCountedInTheWarning() {
+        var ts = sheet(from(MON2), hours(MON1, 8), hours(MON1.plusDays(1), 8), hours(MON2, 8));
+        var view = calculator.view(ts, MON2.plusDays(1).atTime(12, 0));
+        assertThat(view.warnings()).containsExactly("2 entries before the start date (2026-09-21) are ignored");
+        assertThat(view.weeks()).hasSize(1);
+    }
+
+    /**
+     * The ledger must be internally consistent for any data, not just the hand-picked cases above:
+     * each week's running balance equals carry-in plus worked minus target, the next week carries
+     * exactly that in, the week's worked hours are the sum of its days, and the headline balance is
+     * what the current week carries in.
+     */
+    @Test
+    void ledgerInvariantsHoldForRandomTimesheets() {
+        var random = new java.util.Random(42);
+        for (int round = 0; round < 50; round++) {
+            var start = MON1.minusWeeks(random.nextInt(6)).plusDays(random.nextInt(7));
+            var opening = random.nextInt(21) - 10;
+            var config = new TimesheetConfig(30.0 + random.nextInt(11), 6.0 + random.nextInt(3), start, (double) opening);
+            var days = new java.util.ArrayList<DayEntry>();
+            for (int i = 0; i < 60; i++) {
+                var date = start.plusDays(i);
+                switch (random.nextInt(5)) {
+                    case 0, 1, 2 -> days.add(hours(date, 1 + random.nextInt(10)));
+                    case 3 -> days.add(DayEntry.leave(date, DayType.values()[1 + random.nextInt(5)], random.nextBoolean() ? null : 4.0));
+                    default -> { }
+                }
+            }
+            var today = start.plusDays(random.nextInt(60));
+            var view = calculator.view(new Timesheet(config, days), today.atTime(12, 0));
+
+            var weeks = view.weeks().reversed();
+            long carry = config.openingBalanceMinutes();
+            for (var week : weeks) {
+                assertThat(week.carryInMinutes()).as("carry-in of " + week.start()).isEqualTo(carry);
+                assertThat(week.days().stream().mapToLong(DayStats::workedMinutes).sum()).isEqualTo(week.workedMinutes());
+                assertThat(week.days().stream().mapToLong(DayStats::targetReductionMinutes).sum()).isEqualTo(week.leaveMinutes());
+                assertThat(week.targetMinutes()).isEqualTo(Math.max(0, config.weeklyTargetMinutes() - week.leaveMinutes()));
+                assertThat(week.balanceMinutes()).isEqualTo(week.workedMinutes() - week.targetMinutes());
+                assertThat(week.runningBalanceMinutes()).isEqualTo(week.carryInMinutes() + week.balanceMinutes());
+                assertThat(week.effectiveTargetMinutes()).isEqualTo(week.targetMinutes() - week.carryInMinutes());
+                assertThat(week.remainingMinutes()).isEqualTo(week.effectiveTargetMinutes() - week.workedMinutes());
+                assertThat(week.days()).hasSize(7);
+                assertThat(week.start().getDayOfWeek()).isEqualTo(java.time.DayOfWeek.MONDAY);
+                carry = week.runningBalanceMinutes();
+            }
+            var current = weeks.stream().filter(WeekStats::current).findFirst().orElseThrow();
+            assertThat(view.totals().balanceMinutes()).isEqualTo(current.carryInMinutes());
+            assertThat(view.totals().completedWeeks()).isEqualTo((int) weeks.stream().filter(w -> w.end().isBefore(today)).count());
+            assertThat(view.totals().workedToDateMinutes())
+                    .isEqualTo(weeks.stream().filter(w -> !w.start().isAfter(today)).mapToLong(WeekStats::workedMinutes).sum());
+            assertThat(weeks.stream().filter(WeekStats::upcoming).allMatch(w -> w.start().isAfter(today))).isTrue();
+            assertThat(view.todayStats().date()).isEqualTo(today);
+        }
+    }
+
     /** Bug: a start date after today produced no weeks at all, so there was no current week and the UI had nothing to show. */
     @Test
     void aFutureStartDateStillShowsTheCurrentWeekWithNothingCounting() {

@@ -53,19 +53,22 @@ public class TimesheetsApplication {
     }
 
     private static void openBrowser(String url, Environment env) {
-        var os = env.getProperty("os.name", "").toLowerCase();
-        String[] command;
-        if (os.contains("mac")) {
-            command = new String[] {"open", url};
-        } else if (os.contains("win")) {
-            command = new String[] {"rundll32", "url.dll,FileProtocolHandler", url};
-        } else {
-            command = new String[] {"xdg-open", url};
-        }
         try {
-            new ProcessBuilder(command).start();
+            new ProcessBuilder(browserCommand(env.getProperty("os.name", ""), url)).start();
         } catch (IOException e) {
             log.info("Could not open a browser automatically ({}); open {} yourself", e.getMessage(), url);
         }
+    }
+
+    /** The OS-specific command that opens {@code url} in the default browser. */
+    static String[] browserCommand(String osName, String url) {
+        var os = osName.toLowerCase();
+        if (os.contains("mac")) {
+            return new String[] {"open", url};
+        }
+        if (os.contains("win")) {
+            return new String[] {"rundll32", "url.dll,FileProtocolHandler", url};
+        }
+        return new String[] {"xdg-open", url};
     }
 }

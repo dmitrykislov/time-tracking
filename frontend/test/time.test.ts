@@ -99,3 +99,14 @@ describe('workedMinutes', () => {
     expect(workedMinutes({ date: 'd', type: 'WORK', start: '09:00' }, '08:00')).toBe(0);
   });
 });
+
+describe('defaultTimes ordering', () => {
+  it('treats equal dates as ties and still picks a finished day', () => {
+    expect(
+      defaultTimes([
+        { date: '2026-09-29', type: 'WORK', start: '08:00', finish: '16:00' },
+        { date: '2026-09-29', type: 'WORK', start: '08:00', finish: '16:00' },
+      ]),
+    ).toEqual({ start: '08:00', finish: '16:00' });
+  });
+});

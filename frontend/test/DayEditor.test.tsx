@@ -152,4 +152,19 @@ describe('DayEditor', () => {
     );
     expect(screen.getByLabelText('Break 1 note')).toHaveValue('lunch with client');
   });
+
+  it('refuses a break without a start and a non-positive leave figure, without calling save', async () => {
+    const onSave = vi.fn();
+    render(<DayEditor date="2026-09-29" entry={null} standardDayHours={8} busy={false} onSave={onSave} onCancel={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: '+ Add break' }));
+    const form = screen.getByRole('form', { name: 'Edit 2026-09-29' });
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Every break needs a start time.');
+
+    await userEvent.selectOptions(screen.getByLabelText('Type'), 'ANNUAL_LEAVE');
+    await userEvent.type(screen.getByLabelText('Hours'), '0');
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Hours must be a positive number, or blank for a standard day.');
+    expect(onSave).not.toHaveBeenCalled();
+  });
 });

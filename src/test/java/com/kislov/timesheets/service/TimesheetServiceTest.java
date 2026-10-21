@@ -177,6 +177,37 @@ class TimesheetServiceTest {
     }
 
     @Test
+    void endBreakOnlyClosesTheOpenOne() {
+        service.startDay();
+        clock.set(LocalTime.of(10, 0));
+        service.startBreak();
+        clock.set(LocalTime.of(10, 15));
+        service.endBreak();
+        clock.set(LocalTime.of(12, 0));
+        service.startBreak();
+        clock.set(LocalTime.of(12, 30));
+        var view = service.endBreak();
+        assertThat(view.todayStats().entry().breaks()).containsExactly(
+                new Break(LocalTime.of(10, 0), LocalTime.of(10, 15)), new Break(LocalTime.of(12, 0), LocalTime.of(12, 30)));
+        assertThat(view.todayStats().workedMinutes()).isEqualTo(4 * 60 - 45);
+    }
+
+    @Test
+    void startDayWorksOnOrAfterTheStartDate() {
+        service.updateConfig(new TimesheetConfig(40.0, 8.0, TODAY, 0.0));
+        assertThat(service.startDay().todayStats().inProgress()).isTrue();
+    }
+
+    @Test
+    void exportDefaultsEachEndIndependently() {
+        service.saveDay(DayEntry.leave(TODAY.minusDays(1), DayType.SICK, null));
+        assertThat(service.exportPdf(null, null).filename()).isEqualTo("timesheet-" + TODAY.minusDays(1) + "-to-" + TODAY + ".pdf");
+        assertThat(service.exportPdf(TODAY.minusDays(10), null).filename()).isEqualTo("timesheet-" + TODAY.minusDays(10) + "-to-" + TODAY + ".pdf");
+        assertThat(service.exportPdf(null, TODAY.plusDays(3)).filename()).isEqualTo("timesheet-" + TODAY.minusDays(1) + "-to-" + TODAY.plusDays(3) + ".pdf");
+        assertThat(service.exportPdf(null, null).bytes()).startsWith("%PDF-".getBytes());
+    }
+
+    @Test
     void breakNotesSurviveTheButtons() {
         service.startDay();
         clock.set(LocalTime.of(12, 0));

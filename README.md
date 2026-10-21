@@ -110,6 +110,8 @@ mvn package                 # builds the React UI into the jar and runs every te
 mvn test -Dskip.npm -Dskip.installnodenpm   # Java tests only
 cd frontend && npm run dev  # Vite dev server on :5173, proxying /api to :8020
 cd frontend && npm test     # Vitest
+mvn verify                  # as package, plus a Java coverage report in target/site/jacoco/index.html
+cd frontend && npx vitest run --coverage   # frontend coverage table
 ```
 
 Layout:

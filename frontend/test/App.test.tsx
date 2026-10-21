@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
@@ -162,5 +162,38 @@ describe('App', () => {
     expect(screen.getByLabelText('From')).toHaveValue('2026-09-07');
     expect(screen.getByLabelText('To')).toHaveValue('2026-10-19');
     expect(screen.getByRole('link', { name: 'Open PDF' })).toHaveAttribute('href', '/api/export.pdf?from=2026-09-07&to=2026-10-19');
+  });
+
+  it('explains a network failure instead of hanging on Loading', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+    window.location.hash = '';
+    render(<App />);
+    expect(await screen.findByText('Could not reach the server: Failed to fetch')).toBeInTheDocument();
+  });
+
+  it('shows six weeks by default and the rest on demand, and expands an upcoming week on click', async () => {
+    const past = Array.from({ length: 8 }, (_, i) => {
+      const monday = new Date(2026, 8, 28 - 7 * (i + 1));
+      const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+      const w = week({ start: iso(monday), end: iso(sunday), current: false });
+      w.days = Array.from({ length: 7 }, (_, d) => emptyDay(iso(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + d))));
+      return w;
+    });
+    const future = week({ start: '2026-10-05', end: '2026-10-11', current: false, upcoming: true });
+    future.days = ['05', '06', '07', '08', '09', '10', '11'].map((d) => emptyDay(`2026-10-${d}`));
+    fetchMock.mockResolvedValue(jsonResponse(view({ weeks: [future, week(), ...past] })));
+    window.location.hash = '';
+    render(<App />);
+    await screen.findByText('Not started');
+
+    expect(screen.getAllByLabelText(/^Week of/)).toHaveLength(6 + 1);
+    await userEvent.click(screen.getByRole('button', { name: 'Show all 9 weeks' }));
+    expect(screen.getAllByLabelText(/^Week of/)).toHaveLength(9 + 1);
+
+    const upcoming = screen.getByLabelText('Week of 2026-10-05');
+    expect(within(upcoming).queryByRole('table')).toBeNull();
+    await userEvent.click(within(upcoming).getByRole('heading', { name: '5 Oct – 11 Oct' }));
+    expect(within(upcoming).getByRole('table')).toBeInTheDocument();
   });
 });

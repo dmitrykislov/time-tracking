@@ -6,3 +6,4 @@ frontend/dist/
 
 # Your own timesheet stays local; the example file is committed.
 data/timesheet.json
+frontend/coverage/

@@ -111,6 +111,27 @@ class TimesheetStoreTest {
     }
 
     @Test
+    void malformedJsonIsReportedWithTheParserMessage() throws IOException {
+        var file = dir.resolve("timesheet.json");
+        Files.writeString(file, "{ \"days\": [ { \"date\": \"2026-09-28\" ");
+        assertThatThrownBy(() -> new TimesheetStore(file).load())
+                .isInstanceOf(TimesheetException.class)
+                .hasMessageContaining("could not be parsed")
+                .hasMessageNotContaining("null");
+    }
+
+    @Test
+    void unreadableOrUnwritablePathsFailLoudly() throws IOException {
+        var directory = Files.createDirectory(dir.resolve("a-directory.json"));
+        assertThatThrownBy(() -> new TimesheetStore(directory).load())
+                .isInstanceOf(java.io.UncheckedIOException.class).hasMessageContaining("Could not read");
+
+        var blocker = Files.writeString(dir.resolve("blocker"), "not a directory");
+        assertThatThrownBy(() -> new TimesheetStore(blocker.resolve("timesheet.json")).save(Timesheet.empty()))
+                .isInstanceOf(java.io.UncheckedIOException.class).hasMessageContaining("Could not write");
+    }
+
+    @Test
     void savingReplacesTheFileAndLeavesNoTempBehind() throws IOException {
         var file = dir.resolve("timesheet.json");
         var store = new TimesheetStore(file);

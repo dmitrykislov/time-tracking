@@ -138,6 +138,48 @@ class TimesheetPdfTest {
     }
 
     @Test
+    void rendersRunningUnfinishedBeforeStartAndFractionalLeaveDays() throws IOException {
+        var wednesday = MON1.plusDays(2);
+        var ts = new Timesheet(new TimesheetConfig(38.0, 7.6, wednesday, 2.0), List.of(
+                DayEntry.work(MON1, LocalTime.of(9, 0), LocalTime.of(17, 0), List.of()),            // before start: ignored
+                DayEntry.work(wednesday, LocalTime.of(9, 0), null, List.of()),                         // never ended
+                DayEntry.leave(wednesday.plusDays(1), DayType.SICK, 3.8),                              // fractional hours
+                DayEntry.work(wednesday.plusDays(2), LocalTime.of(8, 0), null,
+                        List.of(new Break(LocalTime.of(10, 0), LocalTime.of(10, 10), "coffee"), new Break(LocalTime.of(12, 0), null)))));
+        var now = wednesday.plusDays(2).atTime(12, 20);                                                 // Friday, on a break
+        var view = calculator.view(ts, now);
+        var text = text(pdf.render(view, MON1, now.toLocalDate(), now));
+
+        assertText(text).contains("Mon 21 Sep Before start");
+        assertText(text).contains("Wed 23 Sep Work 09:00 never ended");
+        assertText(text).contains("Thu 24 Sep Sick leave (3.8h) -3h 48m target");
+        assertText(text).contains("Fri 25 Sep Work 08:00 running 10:00-10:10 coffee 12:00-now 30m 3h 50m");
+        assertText(text).contains("Total for the 5 days listed 30m 3h 50m");
+        // Prorated first week: Mon and Tue before the start take 7.6h each off the 38h target.
+        assertText(text).contains("WORKED 3h 50m TARGET 19h after 19h leave CARRIED IN +2h");
+        assertText(text).contains("CARRIED IN +2h balance before 21 Sep 2026");
+        assertText(text).contains("Page 1 of 1");
+    }
+
+    @Test
+    void weekendWorkIsListedLikeAnyOtherDay() throws IOException {
+        var saturday = MON1.plusDays(5);
+        var ts = sheet().withDay(DayEntry.work(saturday, LocalTime.of(10, 0), LocalTime.of(14, 0), List.of()));
+        var text = text(pdf.render(calculator.view(ts, NOW), MON1, MON1.plusDays(6), NOW));
+        assertText(text).contains("Sat 26 Sep Work 10:00 14:00 4h");
+        assertText(text).contains("Total for the 7 days listed 1h 45m 28h 30m");
+    }
+
+    @Test
+    void aSingleDayPeriodIsWordedInTheSingular() throws IOException {
+        var view = calculator.view(sheet(), NOW);
+        var text = text(pdf.render(view, MON1, MON1, NOW));
+        assertText(text).contains("1 of 7 days fall inside the period");
+        assertText(text).contains("Total for the 1 day listed 45m 8h");
+        assertText(text).contains("HOURS WORKED 8h 1 work day, 1 week");
+    }
+
+    @Test
     void refusesAReversedPeriod() {
         var view = calculator.view(sheet(), NOW);
         assertThatThrownBy(() -> pdf.render(view, MON2, MON1, NOW)).isInstanceOf(IllegalArgumentException.class);

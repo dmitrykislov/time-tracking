@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { WeekCard } from '../src/components/WeekCard';
@@ -176,5 +176,29 @@ describe('WeekCard', () => {
     const head = screen.getByRole('heading', { name: '28 Sep – 4 Oct' }).closest('header')!;
     expect(head).toHaveTextContent('So far15h 48m · 24h 12m to go');
     expect(head).toHaveTextContent('Balance so far−24h 12m');
+  });
+
+  it('opens and closes the editor from the keyboard', async () => {
+    render(<WeekCard week={week()} today="2026-09-30" now="12:20" config={config} defaults={defaults} expanded busy={false} onToggle={vi.fn()} onSaveDay={vi.fn()} onDeleteDay={vi.fn()} />);
+    const row = screen.getByText('Tue 29 Sep').closest('tr')!;
+    row.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByRole('form', { name: 'Edit 2026-09-29' })).toBeInTheDocument();
+    row.focus();
+    await userEvent.keyboard(' ');
+    expect(screen.queryByRole('form')).toBeNull();
+  });
+
+  it('deletes a day through the editor and closes it only when the delete succeeded', async () => {
+    const onDeleteDay = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const w = week();
+    w.days[1] = { ...emptyDay('2026-09-29'), entry: { date: '2026-09-29', type: 'SICK' }, targetReductionMinutes: 480 };
+    render(<WeekCard week={w} today="2026-09-30" now="12:20" config={config} defaults={defaults} expanded busy={false} onToggle={vi.fn()} onSaveDay={vi.fn()} onDeleteDay={onDeleteDay} />);
+    await userEvent.click(screen.getByText('Tue 29 Sep'));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete day' }));
+    expect(onDeleteDay).toHaveBeenCalledWith('2026-09-29');
+    expect(screen.getByRole('form')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Delete day' }));
+    await waitFor(() => expect(screen.queryByRole('form')).toBeNull());
   });
 });

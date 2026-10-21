@@ -77,7 +77,8 @@ describe('NotesPage', () => {
     ]);
     const monday = screen.getByLabelText('Mon, 28 Sept 2026');
     expect(monday).toHaveTextContent('Work · 08:30 – 17:30 · 8h 30m');
-    expect(within(monday).getAllByRole('paragraph')).toHaveLength(3);
+    // Two note paragraphs (split on blank lines); the hours summary line is not part of the note.
+    expect(monday.querySelectorAll('.note-text p')).toHaveLength(2);
     expect(monday).toHaveTextContent('Agreed the parser rewrite.');
     expect(screen.getByLabelText('Thu, 01 Oct 2026')).toHaveTextContent('No notes yet.');
 
@@ -156,5 +157,41 @@ describe('NotesPage', () => {
   it('does not crash when the server sends no weeks', () => {
     render(<NotesPage view={view({ weeks: [] })} busy={false} onSaveNote={vi.fn()} />);
     expect(screen.getByText('Nothing to show yet.')).toBeInTheDocument();
+  });
+
+  it('falls back to the current week when the linked day is outside the range', () => {
+    render(<NotesPage view={view({ weeks: [notedWeek(), older] })} focusDate="2030-01-01" busy={false} onSaveNote={vi.fn()} />);
+    expect(screen.getByLabelText('Notes for week of 2026-09-28')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('opens the editor with Enter on the text, keeps single line breaks, and survives a clipboard failure', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    render(<NotesPage view={view({ weeks: [notedWeek()] })} busy={false} onSaveNote={vi.fn()} />);
+
+    const monday = screen.getByLabelText('Mon, 28 Sept 2026');
+    const paragraphs = monday.querySelectorAll('.note-text p');
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0].querySelector('br')).toBeNull();
+    expect(paragraphs[1].querySelector('br')).not.toBeNull();
+    expect(paragraphs[1]).toHaveTextContent('Agreed the parser rewrite.Sam owns the spike.');
+
+    within(monday).getByRole('button', { name: /Sprint planning/ }).focus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByLabelText('Note for Mon, 28 Sept 2026')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Copy week as text' }));
+    expect(writeText).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Copy week as text' })).toHaveTextContent('Copy week');
+    vi.unstubAllGlobals();
+  });
+
+  it('switching weeks closes an open editor', async () => {
+    render(<NotesPage view={view({ weeks: [notedWeek(), older] })} busy={false} onSaveNote={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Edit note for Mon, 28 Sept 2026' }));
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /21 Sep – 27 Sep/ }));
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 });
